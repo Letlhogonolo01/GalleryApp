@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,11 +6,11 @@ import {
   SafeAreaView,
   Button,
   Image,
-} from "react-native";
-import { Camera } from "expo-camera";
-import * as MediaLibrary from "expo-media-library";
-import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+} from 'react-native';
+import { Camera } from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CameraScreen = ({ navigation }) => {
   let cameraRef = useRef();
@@ -25,13 +25,12 @@ const CameraScreen = ({ navigation }) => {
       const cameraPermission = await Camera.requestCameraPermissionsAsync();
       const mediaLibraryPermission =
         await MediaLibrary.requestPermissionsAsync();
-      setHasCameraPermission(cameraPermission.status === "granted");
-      setHasMediaLibraryPermission(mediaLibraryPermission.status === "granted");
+      setHasCameraPermission(cameraPermission.status === 'granted');
+      setHasMediaLibraryPermission(mediaLibraryPermission.status === 'granted');
 
       // Request location permission
-      const locationPermission =
-        await Location.requestForegroundPermissionsAsync();
-      if (locationPermission.status === "granted") {
+      const locationPermission = await Location.requestForegroundPermissionsAsync();
+      if (locationPermission.status === 'granted') {
         // Get the user's location
         const currentLocation = await Location.getCurrentPositionAsync({});
         setLocation(currentLocation);
@@ -62,29 +61,25 @@ const CameraScreen = ({ navigation }) => {
   }
 
   let takePic = async () => {
-    let options = {
-      quality: 1,
-      base64: true,
-      exif: false,
-    };
-
-    let newPhoto = await cameraRef.current.takePictureAsync(options);
-    setPhoto(newPhoto);
+    if (cameraRef.current) {
+      let photo = await cameraRef.current.takePictureAsync();
+      setPhoto(photo);
+    }
   };
 
   const saveImageToGallery = async (imageInfo) => {
     try {
-      const storedImages = await AsyncStorage.getItem("gallery");
+      const storedImages = await AsyncStorage.getItem('gallery');
       if (storedImages) {
         const images = JSON.parse(storedImages);
         images.push(imageInfo);
-        await AsyncStorage.setItem("gallery", JSON.stringify(images));
+        await AsyncStorage.setItem('gallery', JSON.stringify(images));
       } else {
         const images = [imageInfo];
-        await AsyncStorage.setItem("gallery", JSON.stringify(images));
+        await AsyncStorage.setItem('gallery', JSON.stringify(images));
       }
     } catch (error) {
-      console.error("Error saving image to gallery:", error);
+      console.error('Error saving image to gallery:', error);
     }
   };
 
@@ -96,7 +91,7 @@ const CameraScreen = ({ navigation }) => {
         longitude: location?.coords.longitude,
         address: address,
       });
-      setPhoto(undefined);
+      setPhoto(null);
     }
   };
 
@@ -104,16 +99,13 @@ const CameraScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {photo ? (
         <>
-          <Image
-            style={styles.preview}
-            source={{ uri: "data:image/jpg;base64," + photo.base64 }}
-          />
+          <Image style={styles.preview} source={{ uri: photo.uri }} />
           <Text>Latitude: {location?.coords.latitude}</Text>
           <Text>Longitude: {location?.coords.longitude}</Text>
           <Text>Address: {address}</Text>
           <View style={styles.buttonContainer}>
             <Button title="Save" onPress={savePic} />
-            <Button title="Discard" onPress={() => setPhoto(undefined)} />
+            <Button title="Discard" onPress={() => setPhoto(null)} />
           </View>
         </>
       ) : (
@@ -125,7 +117,7 @@ const CameraScreen = ({ navigation }) => {
             <View style={styles.bottomButton}>
               <Button
                 title="Gallery"
-                onPress={() => navigation.navigate("Gallery")}
+                onPress={() => navigation.navigate('Gallery')}
               />
             </View>
           </View>
