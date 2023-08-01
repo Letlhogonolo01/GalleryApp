@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,17 +6,20 @@ import {
   SafeAreaView,
   Button,
   Image,
-} from 'react-native';
-import { Camera } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
-import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import { Camera } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import * as Location from "expo-location";
+import * as SQLite from "expo-sqlite";
+
+const db = SQLite.openDatabase("gallery.db");
 
 const CameraScreen = ({ navigation }) => {
-  let cameraRef = useRef();
-  const [hasCameraPermission, setHasCameraPermission] = useState();
-  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] = useState();
-  const [photo, setPhoto] = useState();
+  const cameraRef = useRef(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] =
+    useState(null);
+  const [photo, setPhoto] = useState(null);
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState(null);
 
@@ -25,12 +28,13 @@ const CameraScreen = ({ navigation }) => {
       const cameraPermission = await Camera.requestCameraPermissionsAsync();
       const mediaLibraryPermission =
         await MediaLibrary.requestPermissionsAsync();
-      setHasCameraPermission(cameraPermission.status === 'granted');
-      setHasMediaLibraryPermission(mediaLibraryPermission.status === 'granted');
+      setHasCameraPermission(cameraPermission.status === "granted");
+      setHasMediaLibraryPermission(mediaLibraryPermission.status === "granted");
 
       // Request location permission
-      const locationPermission = await Location.requestForegroundPermissionsAsync();
-      if (locationPermission.status === 'granted') {
+      const locationPermission =
+        await Location.requestForegroundPermissionsAsync();
+      if (locationPermission.status === "granted") {
         // Get the user's location
         const currentLocation = await Location.getCurrentPositionAsync({});
         setLocation(currentLocation);
@@ -50,9 +54,9 @@ const CameraScreen = ({ navigation }) => {
     })();
   }, []);
 
-  if (hasCameraPermission === undefined) {
+  if (hasCameraPermission === null || hasMediaLibraryPermission === null) {
     return <Text>Requesting permissions...</Text>;
-  } else if (!hasCameraPermission) {
+  } else if (hasCameraPermission === false) {
     return (
       <Text>
         Permission for the camera not granted. Please change this in settings.
@@ -67,31 +71,27 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
-  const saveImageToGallery = async (imageInfo) => {
-    try {
-      const storedImages = await AsyncStorage.getItem('gallery');
-      if (storedImages) {
-        const images = JSON.parse(storedImages);
-        images.push(imageInfo);
-        await AsyncStorage.setItem('gallery', JSON.stringify(images));
-      } else {
-        const images = [imageInfo];
-        await AsyncStorage.setItem('gallery', JSON.stringify(images));
-      }
-    } catch (error) {
-      console.error('Error saving image to gallery:', error);
-    }
-  };
-
-  let savePic = () => {
+  const saveImageToGallery = () => {
     if (photo) {
-      saveImageToGallery({
-        photoUri: photo.uri,
-        latitude: location?.coords.latitude,
-        longitude: location?.coords.longitude,
-        address: address,
+      db.transaction((tx) => {
+        tx.executeSql(
+          "INSERT INTO photos (photoUri, latitude, longitude, address) VALUES (?, ?, ?, ?);",
+          [
+            photo.uri,
+            location?.coords.latitude,
+            location?.coords.longitude,
+            address,
+          ],
+          (_, resultSet) => {
+            const newId = resultSet.insertId;
+            setPhoto(null);
+            navigation.navigate("Gallery", { newId });
+          },
+          (_, error) => {
+            console.error("Error saving image to gallery:", error);
+          }
+        );
       });
-      setPhoto(null);
     }
   };
 
@@ -104,7 +104,7 @@ const CameraScreen = ({ navigation }) => {
           <Text>Longitude: {location?.coords.longitude}</Text>
           <Text>Address: {address}</Text>
           <View style={styles.buttonContainer}>
-            <Button title="Save" onPress={savePic} />
+            <Button title="Save" onPress={saveImageToGallery} />
             <Button title="Discard" onPress={() => setPhoto(null)} />
           </View>
         </>
@@ -117,7 +117,7 @@ const CameraScreen = ({ navigation }) => {
             <View style={styles.bottomButton}>
               <Button
                 title="Gallery"
-                onPress={() => navigation.navigate('Gallery')}
+                onPress={() => navigation.navigate("Gallery")}
               />
             </View>
           </View>

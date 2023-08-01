@@ -11,44 +11,35 @@ import {
   Modal,
   TouchableOpacity,
 } from "react-native";
-import { Camera } from 'expo-camera';
 import * as SQLite from "expo-sqlite";
 
 const db = SQLite.openDatabase("gallery.db");
 
-const Gallery = () => {
+const Gallery = ({ route }) => {
   const [gallery, setGallery] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [photo, setPhoto] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [address, setAddress] = useState(null);
 
   useEffect(() => {
-    createTable(); // Create the table if it doesn't exist
     fetchGallery();
   }, []);
 
-  const createTable = () => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        "CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, photoUri TEXT NOT NULL, latitude REAL, longitude REAL, address TEXT);",
-        [],
-        () => console.log('Table "photos" created successfully.'),
-        (_, error) => {
-          console.error("Error creating table:", error);
-        }
-      );
-    });
-  };
+  useEffect(() => {
+    if (route.params && route.params.newId) {
+      setSelectedImage(null);
+      fetchGallery();
+    }
+  }, [route.params]);
 
   const fetchGallery = () => {
     db.transaction((tx) => {
       tx.executeSql(
+        "CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, photoUri TEXT, latitude REAL, longitude REAL, address TEXT);"
+      );
+      tx.executeSql(
         "SELECT * FROM photos;",
         [],
-        (_, result) => {
-          const storedGallery = result.rows._array;
-          setGallery(storedGallery);
+        (_, { rows }) => {
+          setGallery(rows._array);
         },
         (_, error) => {
           console.error("Error fetching gallery:", error);
@@ -62,7 +53,9 @@ const Gallery = () => {
       tx.executeSql(
         "DELETE FROM photos WHERE id = ?;",
         [id],
-        () => fetchGallery(), // Fetch the updated gallery after successful deletion
+        () => {
+          fetchGallery();
+        },
         (_, error) => {
           console.error("Error deleting image:", error);
         }
@@ -90,56 +83,6 @@ const Gallery = () => {
 
   const closeModal = () => {
     setSelectedImage(null);
-  };
-
-  const saveImageToGallery = (imageInfo) => {
-    return new Promise((resolve, reject) => {
-      db.transaction(
-        (tx) => {
-          tx.executeSql(
-            "INSERT INTO photos (photoUri, latitude, longitude, address) VALUES (?, ?, ?, ?);",
-            [
-              imageInfo.photoUri,
-              imageInfo.latitude,
-              imageInfo.longitude,
-              imageInfo.address,
-            ],
-            (_, result) => resolve(result.insertId),
-            (_, error) => reject(error)
-          );
-        },
-        null,
-        () => console.log("Image saved to gallery successfully.")
-      );
-    });
-  };
-
-  const savePic = () => {
-    if (photo) {
-      saveImageToGallery({
-        photoUri: photo.uri,
-        latitude: location?.coords.latitude,
-        longitude: location?.coords.longitude,
-        address: address,
-      })
-        .then((insertId) => {
-          // Image saved successfully, update the photo state with the saved image data
-          setGallery((prevGallery) => [
-            ...prevGallery,
-            {
-              id: insertId,
-              photoUri: photo.uri,
-              latitude: location?.coords.latitude,
-              longitude: location?.coords.longitude,
-              address: address,
-            },
-          ]);
-          setPhoto(null); // Reset the photo state
-        })
-        .catch((error) => {
-          console.error("Error saving image to gallery:", error);
-        });
-    }
   };
 
   const renderImageItem = ({ item }) => {
@@ -184,44 +127,47 @@ const Gallery = () => {
           </TouchableOpacity>
         </View>
       </Modal>
-      {photo ? (
-        <>
-          <Image style={styles.preview} source={{ uri: photo.uri }} />
-          <Text>Latitude: {location?.coords.latitude}</Text>
-          <Text>Longitude: {location?.coords.longitude}</Text>
-          <Text>Address: {address}</Text>
-          <View style={styles.buttonContainer}>
-            <Button title="Save" onPress={savePic} />
-            <Button title="Discard" onPress={() => setPhoto(null)} />
-          </View>
-        </>
-      ) : (
-        <Camera
-          style={styles.camera}
-          ref={cameraRef}
-          onReady={handleCameraReady}
-          type={cameraType}
-          ratio="16:9"
-        >
-          <View style={styles.bottomButtonContainer}>
-            <View style={styles.bottomButton}>
-              <Button title="Take Pic" onPress={takePic} />
-            </View>
-            <View style={styles.bottomButton}>
-              <Button
-                title="Gallery"
-                onPress={() => navigation.navigate("Gallery")}
-              />
-            </View>
-          </View>
-        </Camera>
-      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  // ... styles remain the same
+  container: {
+    flex: 1,
+    padding: 10,
+  },
+  imageContainer: {
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "lightgrey",
+    padding: 10,
+  },
+  image: {
+    width: "100%",
+    height: 200,
+    resizeMode: "cover",
+  },
+  imageInfo: {
+    marginTop: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
+  modalImageContainer: {
+    width: "90%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
 });
 
 export default Gallery;
