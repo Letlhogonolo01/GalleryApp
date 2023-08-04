@@ -16,8 +16,16 @@ export default function App() {
           component={WelcomeScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen name="Camera" component={CameraScreen} />
-        <Stack.Screen name="Gallery" component={Gallery} />
+        <Stack.Screen
+          name="Camera"
+          component={CameraScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Gallery"
+          component={Gallery}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

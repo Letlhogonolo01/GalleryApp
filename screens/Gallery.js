@@ -11,56 +11,54 @@ import {
   Modal,
   TouchableOpacity,
 } from "react-native";
-import * as SQLite from "expo-sqlite";
+import { fetchPhotosFromDatabase, deletePhotoFromDatabase } from "../database";
 
-const db = SQLite.openDatabase("gallery.db");
-
-const Gallery = ({ route }) => {
+const Gallery = ({ navigation, route }) => {
   const [gallery, setGallery] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
-    fetchGallery();
+    fetchPhotosFromDatabase(
+      (photos) => {
+        setGallery(photos);
+      },
+      (error) => {
+        console.error("Error fetching gallery:", error);
+      }
+    );
   }, []);
 
   useEffect(() => {
     if (route.params && route.params.newId) {
       setSelectedImage(null);
-      fetchGallery();
-    }
-  }, [route.params]);
-
-  const fetchGallery = () => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        "CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, photoUri TEXT, latitude REAL, longitude REAL, address TEXT);"
-      );
-      tx.executeSql(
-        "SELECT * FROM photos;",
-        [],
-        (_, { rows }) => {
-          setGallery(rows._array);
+      fetchPhotosFromDatabase(
+        (photos) => {
+          setGallery(photos);
         },
-        (_, error) => {
+        (error) => {
           console.error("Error fetching gallery:", error);
         }
       );
-    });
-  };
+    }
+  }, [route.params]);
 
   const deleteImage = (id) => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        "DELETE FROM photos WHERE id = ?;",
-        [id],
-        () => {
-          fetchGallery();
-        },
-        (_, error) => {
-          console.error("Error deleting image:", error);
-        }
-      );
-    });
+    deletePhotoFromDatabase(
+      id,
+      () => {
+        fetchPhotosFromDatabase(
+          (photos) => {
+            setGallery(photos);
+          },
+          (error) => {
+            console.error("Error fetching gallery:", error);
+          }
+        );
+      },
+      (error) => {
+        console.error("Error deleting image:", error);
+      }
+    );
   };
 
   const confirmDelete = (id) => {
@@ -103,6 +101,7 @@ const Gallery = ({ route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Gallery</Text>
       {gallery.length === 0 ? (
         <Text>No images in the gallery.</Text>
       ) : (
@@ -127,6 +126,7 @@ const Gallery = ({ route }) => {
           </TouchableOpacity>
         </View>
       </Modal>
+      <Button title="Back" onPress={() => navigation.navigate("Welcome")} />
     </SafeAreaView>
   );
 };
@@ -167,6 +167,12 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     resizeMode: "contain",
+  },
+  header: {
+    marginTop: 30,
+    marginLeft: 120,
+    padding: 10,
+    fontSize: 25,
   },
 });
 

@@ -8,25 +8,22 @@ import {
 } from "react-native";
 
 const WelcomeScreen = ({ navigation }) => {
-  const goToCameraScreen = () => {
+  const handleGetStarted = () => {
     navigation.navigate("Camera");
-  };
-
-  const goToGalleryScreen = () => {
-    navigation.navigate("Gallery");
   };
 
   return (
     <ImageBackground
-      source={require("../assets/mountain-range.avif")}
+      source={require("../assets/background.jpg")}
       style={styles.container}
     >
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={goToCameraScreen}>
-          <Text style={styles.buttonText}>Take Pic</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={goToGalleryScreen}>
-          <Text style={styles.buttonText}>Gallery</Text>
+      <View style={styles.contentContainer}>
+        {/* <Text style={styles.title}>Welcome to My Gallery App</Text> */}
+        <TouchableOpacity
+          style={styles.getStartedButton}
+          onPress={handleGetStarted}
+        >
+          <Text style={styles.buttonText}>Get Started</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -39,13 +36,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  buttonContainer: {
-    flexDirection: "row",
+  contentContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-around",
-    width: "80%",
+    marginTop: 450,
   },
-  button: {
+  title: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 20,
+  },
+  getStartedButton: {
     backgroundColor: "rgba(255, 255, 255, 0.7)",
     paddingVertical: 12,
     paddingHorizontal: 20,

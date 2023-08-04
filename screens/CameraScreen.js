@@ -10,9 +10,7 @@ import {
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Location from "expo-location";
-import * as SQLite from "expo-sqlite";
-
-const db = SQLite.openDatabase("gallery.db");
+import { savePhotoToDatabase } from "../database"; 
 
 const CameraScreen = ({ navigation }) => {
   const cameraRef = useRef(null);
@@ -64,39 +62,49 @@ const CameraScreen = ({ navigation }) => {
     );
   }
 
-  let takePic = async () => {
+  const takePic = async () => {
     if (cameraRef.current) {
-      let photo = await cameraRef.current.takePictureAsync();
-      setPhoto(photo);
+      try {
+        const photo = await cameraRef.current.takePictureAsync();
+        setPhoto(photo);
+      } catch (error) {
+        console.error('Error taking picture:', error);
+      }
     }
   };
 
-  const saveImageToGallery = () => {
+  const saveImageToGallery = async () => {
     if (photo) {
-      db.transaction((tx) => {
-        tx.executeSql(
-          "INSERT INTO photos (photoUri, latitude, longitude, address) VALUES (?, ?, ?, ?);",
-          [
-            photo.uri,
-            location?.coords.latitude,
-            location?.coords.longitude,
-            address,
-          ],
-          (_, resultSet) => {
-            const newId = resultSet.insertId;
-            setPhoto(null);
-            navigation.navigate("Gallery", { newId });
-          },
-          (_, error) => {
-            console.error("Error saving image to gallery:", error);
+      try {
+        const locationPermission = await Location.requestForegroundPermissionsAsync();
+        if (locationPermission.status === 'granted') {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          setLocation(currentLocation);
+  
+          const addressResponse = await Location.reverseGeocodeAsync({
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+          });
+          if (addressResponse.length > 0) {
+            const firstAddress = addressResponse[0];
+            setAddress(
+              `${firstAddress.name}, ${firstAddress.street}, ${firstAddress.region}, ${firstAddress.country}`
+            );
           }
-        );
-      });
+        }
+
+        await savePhotoToDatabase(photo.uri, location?.coords.latitude, location?.coords.longitude, address);
+        setPhoto(null);
+        navigation.navigate('Gallery', { newId: Date.now() });
+      } catch (error) {
+        console.error('Error saving image to gallery:', error);
+      }
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Camera</Text>
       {photo ? (
         <>
           <Image style={styles.preview} source={{ uri: photo.uri }} />
@@ -161,6 +169,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     marginBottom: 10,
+  },
+  header:{
+    marginTop: 30,
+    padding: 10,
+    fontSize: 25,
   },
 });
 
